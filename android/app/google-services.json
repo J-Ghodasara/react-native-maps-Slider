@@ -1,0 +1,33 @@
+{
+  "project_info": {
+    "project_number": "104800663700",
+    "firebase_url": "https://derive-6d1a1.firebaseio.com",
+    "project_id": "derive-6d1a1",
+    "storage_bucket": "derive-6d1a1.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id":
+        "1:104800663700:android:c1458c658dae1bcc9adc81",
+        "android_client_info": {
+          "package_name": "com.latesthash"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id":
+          "104800663700-pkjom2voar69801lei8e5uk6tk84gfcv.apps.googleuserconten
+          t.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdXtTx2u-LIxWY6Wl8mcDD6ZFu5wV4BaM"
+        }
+      ]
+    }
+  ],
+  "configuration_version": "1"
+}
