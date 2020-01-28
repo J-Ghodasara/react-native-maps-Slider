@@ -11,6 +11,7 @@ const colors = {
   colorLightGray: '#bbbbbb',
   colorBlue: '#445ee9',
   colorRed: '#FF0000',
+  colorFacebook: '#3b5998',
 };
 
 export default colors;

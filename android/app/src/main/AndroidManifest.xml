@@ -2,6 +2,8 @@
   package="com.latesthash">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <application
       android:name="com.latesthash.MainApplication"
@@ -32,6 +34,15 @@
       <meta-data
      android:name="com.google.android.geo.API_KEY"
      android:value="AIzaSyBbaxtZ42T7NOIOddXioiamoilZZ9qstr8"/>
+
+    <meta-data android:name="com.facebook.sdk.ApplicationId"
+        android:value="@string/facebook_app_id"/>
+
+    <activity android:name="com.facebook.FacebookActivity"
+        android:configChanges=
+            "keyboard|keyboardHidden|screenLayout|screenSize|orientation"
+        android:label="@string/app_name" />
+
     </application>
 
 </manifest>

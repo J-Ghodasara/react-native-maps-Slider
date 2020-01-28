@@ -1,5 +1,13 @@
+/* eslint-disable react-native/no-inline-styles */
 import React from 'react';
-import {Text, View, StyleSheet, TouchableOpacity} from 'react-native';
+import {
+  Text,
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Dimensions,
+} from 'react-native';
 import SplashScreen from 'react-native-splash-screen';
 import colors from '../config/colors';
 import MapView, {PROVIDER_GOOGLE, Marker} from 'react-native-maps';
@@ -7,13 +15,29 @@ import firestore from '@react-native-firebase/firestore';
 import firebase from '@react-native-firebase/app';
 import '@react-native-firebase/auth';
 import getDistance from 'geolib/es/getDistance';
+import {FlatList, ScrollView} from 'react-native-gesture-handler';
+import {Card} from 'react-native-elements';
+import Share from 'react-native-share';
+import Modal from 'react-native-modal';
+import RNFetchBlob from 'rn-fetch-blob';
+import GestureRecognizer, {swipeDirections} from 'react-native-swipe-gestures';
+import {saveAsyncData} from '../helper/AsyncStorageUtil';
 
 export class HomeScreen extends React.Component {
+  isSharePostClicked = false;
+  cardHeight = 0;
+  instance = this;
   constructor(props) {
     super(props);
     this.state = {
       locations: [],
+      visible: false,
+      place: {},
+      details: [],
       allLocations: [],
+      cardheight: 120,
+      showShare: false,
+      numberOfLines: 1,
       textArray: [
         {text: '5', isSelectable: true},
         {text: '10', isSelectable: false},
@@ -46,17 +70,31 @@ export class HomeScreen extends React.Component {
       .then(app => {})
       .catch(e => {});
     await firebase.auth().signInAnonymously();
-    const ref = firestore().collection('dest_v2');
+    const ref = firestore().collection('dest_v3');
     ref.onSnapshot(querySnapshot => {
       let places = [];
       querySnapshot.docs.map((doc, i) => {
         places.push(doc.data());
       });
+      console.log('PLACES', places);
       this.state.locations = places;
       this.state.allLocations = places;
+      this.setState({details: places});
+      console.log('PHOTOS', places[0].photos);
       this.updateSelectedState(0);
     });
+    // this.setState({cardheight: this.cardHeight});
   }
+
+  onViewableItemsChanged = ({viewableItems, changed}) => {
+    if (viewableItems.length !== 0) {
+      console.log('PUBLISH', viewableItems[0].index);
+      this.mapView.animateToCoordinate({
+        latitude: this.state.locations[viewableItems[0].index].lat,
+        longitude: this.state.locations[viewableItems[0].index].lng,
+      });
+    }
+  };
 
   updateSelectedState = position => {
     let newArray = [...this.state.textArray];
@@ -102,6 +140,90 @@ export class HomeScreen extends React.Component {
     this.setState({textArray: newArray, locations: updatedLocations});
   };
 
+  getBase64Image(imgUrl, description, dishName) {
+    const fs = RNFetchBlob.fs;
+    let imagePath = null;
+    RNFetchBlob.config({
+      fileCache: true,
+    })
+      .fetch('GET', imgUrl)
+      .then(resp => {
+        imagePath = resp.path();
+        return resp.readFile('base64');
+      })
+      .then(base64Data => {
+        console.log(base64Data);
+        const shareOptions = {
+          title: 'Share via',
+          message: description,
+          subject: dishName,
+          url: 'data:image/png;base64,' + base64Data,
+          showAppsToView: false,
+          filename: 'test',
+        };
+        // PubSub.publish(constant.keyAllConstant.keyPubProgress, {
+        //   isShow: false,
+        // });
+        this.isSharePostClicked = false;
+        Share.open(shareOptions)
+          .then(res => {
+            console.log(res);
+          })
+          .catch(e => {
+            console.log(e);
+          });
+        return fs.unlink(imagePath);
+      });
+  }
+
+  onSwipeDown = gestureState => {
+    let height = this.state.cardheight;
+    let timerCall = setInterval(() => {
+      if (height > 120) {
+        height = height - 150;
+        if (height < 120) {
+          this.setState({
+            cardheight: 120,
+            numberOfLines: 1,
+            showShare: false,
+          });
+        } else {
+          this.setState({
+            cardheight: height,
+            numberOfLines: 1,
+            showShare: false,
+          });
+        }
+      } else {
+        clearInterval(timerCall);
+      }
+    }, 0.0001);
+  };
+
+  omSwipeUp = gestureState => {
+    let height = 120;
+    let timerCall = setInterval(() => {
+      if (height < Dimensions.get('screen').height / 2) {
+        height = height + 150;
+        if (height > Dimensions.get('screen').height / 2) {
+          this.setState({
+            cardheight: Dimensions.get('screen').height / 2 - 50,
+            numberOfLines: 12,
+            showShare: true,
+          });
+        } else {
+          this.setState({
+            cardheight: height,
+            numberOfLines: 12,
+            showShare: true,
+          });
+        }
+      } else {
+        clearInterval(timerCall);
+      }
+    }, 0.0001);
+  };
+
   render() {
     var views = [];
     views = this.state.textArray.map((item, key) => (
@@ -135,6 +257,15 @@ export class HomeScreen extends React.Component {
       <View style={{flex: 1}}>
         <View style={styles.kmContainerView}>
           <Text style={styles.textStyle}>Kilometers</Text>
+
+          <Text
+            onPress={() => {
+              saveAsyncData('isTokenAvailable', 'false');
+              this.props.navigation.navigate('LoginScreen');
+            }}
+            style={styles.textStyleLogout}>
+            Logout
+          </Text>
         </View>
         <View style={styles.contanierStyle}>{views}</View>
         <MapView
@@ -145,9 +276,6 @@ export class HomeScreen extends React.Component {
             longitude: 73.8567,
             latitudeDelta: 0.003,
             longitudeDelta: 0.19,
-          }}
-          onMapReady={() => {
-            // this.onMapReady();
           }}
           ref={ref => {
             this.mapView = ref;
@@ -178,18 +306,107 @@ export class HomeScreen extends React.Component {
                       longitude: d.lng,
                     },
                   });
-                  // this.props.markerClick({data: this.props.data[i], index: i});
                 }}
                 key={i}
-                // icon={
-                //   this.state.isSelected === i
-                //     ? constant.map.active
-                //     : constant.map.inActive
-                // }
               />
             );
           })}
         </MapView>
+        <View style={{position: 'absolute', bottom: 0, left: 0, right: 0}}>
+          <FlatList
+            snapToAlignment={'center'}
+            snapToInterval={Dimensions.get('screen').width}
+            decelerationRate={'fast'}
+            data={this.state.locations}
+            horizontal={true}
+            onViewableItemsChanged={this.onViewableItemsChanged}
+            viewabilityConfig={{
+              itemVisiblePercentThreshold: 90,
+            }}
+            renderItem={({item, index}) => (
+              <GestureRecognizer
+                onSwipeUp={this.omSwipeUp}
+                onSwipeDown={this.onSwipeDown}>
+                <View
+                  onLayout={event => {
+                    var {x, y, width, height} = event.nativeEvent.layout;
+                    console.log(height);
+                    this.cardHeight = height;
+                  }}
+                  style={{marginBottom: 10}}>
+                  <Card
+                    containerStyle={{
+                      width: Dimensions.get('screen').width - 30,
+                    }}>
+                    <View
+                      style={{
+                        height: this.state.cardheight,
+                      }}>
+                      <View
+                        style={{
+                          // flex: 1,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                        }}>
+                        <Image
+                          style={{
+                            height: 80,
+                            width: 80,
+                            backgroundColor: colors.colorLightGray,
+                            marginStart: 5,
+                          }}
+                          resizeMode="cover"
+                          source={{
+                            uri: item.photos[0],
+                          }}
+                        />
+                        <Text
+                          style={{
+                            marginStart: 10,
+                            alignSelf: 'center',
+                            width: 170,
+                          }}>
+                          {item.destination}
+                        </Text>
+                        {this.state.showShare ? (
+                          <TouchableOpacity
+                            onPress={() => {
+                              console.log('SHARE');
+                              if (!this.isSharePostClicked) {
+                                this.isSharePostClicked = true;
+                                this.getBase64Image(
+                                  item.photos[0],
+                                  item.summary,
+                                  item.destination,
+                                );
+                              }
+                            }}>
+                            <Image
+                              style={{
+                                marginStart: 10,
+                                width: 20,
+                                height: 20,
+                                zIndex: 10,
+                                alignSelf: 'flex-end',
+                              }}
+                              source={require('../assets/share.png')}
+                            />
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
+                      <Text
+                        numberOfLines={this.state.numberOfLines}
+                        ellipsizeMode={'tail'}
+                        style={{marginTop: 10}}>
+                        {item.summary}
+                      </Text>
+                    </View>
+                  </Card>
+                </View>
+              </GestureRecognizer>
+            )}
+          />
+        </View>
       </View>
     );
   }
@@ -250,8 +467,21 @@ const styles = StyleSheet.create({
     color: colors.colorGray,
     fontWeight: 'bold',
     alignSelf: 'center',
+    marginStart: Dimensions.get('screen').width / 2 - 45,
   },
-  kmContainerView: {backgroundColor: '#f8f8f8',paddingTop:10},
+  textStyleLogout: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    color: colors.colorRed,
+    fontWeight: 'bold',
+    alignSelf: 'center',
+    marginStart: 80,
+  },
+  kmContainerView: {
+    flexDirection: 'row',
+    backgroundColor: '#f8f8f8',
+    paddingTop: 10,
+  },
 });
 
 export default HomeScreen;
