@@ -93,7 +93,7 @@ export class HomeScreen extends React.Component {
             if (this.refs && this.refs.list) {
               this.refs.list.scrollToIndex({
                 animated: true,
-                index: parseInt(this.id),
+                index: parseInt(this.id) - 1,
               });
             }
           }
