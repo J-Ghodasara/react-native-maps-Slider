@@ -27,6 +27,7 @@ export class HomeScreen extends React.Component {
   isSharePostClicked = false;
   cardHeight = 0;
   instance = this;
+  id = '';
   constructor(props) {
     super(props);
     this.state = {
@@ -65,6 +66,9 @@ export class HomeScreen extends React.Component {
 
   async componentDidMount() {
     SplashScreen.hide();
+    this.id = this.props.navigation.getParam('id', '');
+    console.log('IDS', this.id);
+
     firebase
       .initializeApp(this.androidConfig)
       .then(app => {})
@@ -82,6 +86,19 @@ export class HomeScreen extends React.Component {
       this.setState({details: places});
       console.log('PHOTOS', places[0].photos);
       this.updateSelectedState(0);
+      if (this.id !== '' || this.id !== undefined) {
+        setTimeout(() => {
+          if (this.state.locations.length > this.id) {
+            console.log('Activated', this.id);
+            if (this.refs && this.refs.list) {
+              this.refs.list.scrollToIndex({
+                animated: true,
+                index: parseInt(this.id),
+              });
+            }
+          }
+        }, 2000);
+      }
     });
     // this.setState({cardheight: this.cardHeight});
   }
@@ -224,6 +241,22 @@ export class HomeScreen extends React.Component {
     }, 0.0001);
   };
 
+  onMapReady() {
+    if (this.id !== '' || this.id !== undefined) {
+      setTimeout(() => {
+        if (this.state.locations.length > this.id) {
+          console.log('Activated', this.id);
+          if (this.refs && this.refs.list) {
+            this.refs.list.scrollToIndex({
+              animated: true,
+              index: parseInt(this.id),
+            });
+          }
+        }
+      }, 2000);
+    }
+  }
+
   render() {
     var views = [];
     views = this.state.textArray.map((item, key) => (
@@ -280,6 +313,9 @@ export class HomeScreen extends React.Component {
           ref={ref => {
             this.mapView = ref;
           }}
+          onMapReady={() => {
+            this.onMapReady();
+          }}
           minZoomLevel={4}
           maxZoomLevel={13}
           moveOnMarkerPress={false}
@@ -314,6 +350,7 @@ export class HomeScreen extends React.Component {
         </MapView>
         <View style={{position: 'absolute', bottom: 0, left: 0, right: 0}}>
           <FlatList
+            ref="list"
             snapToAlignment={'center'}
             snapToInterval={Dimensions.get('screen').width}
             decelerationRate={'fast'}
